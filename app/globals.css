@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Token tema ─────────────────────────────────────────────
+   Gaya: panel ruang kontrol broadcast. Lampu tally merah sebagai
+   penanda status, aksen amber untuk kontrol aktif. */
+
+:root {
+  /* light */
+  --panel: 238 240 243;
+  --panel2: 255 255 255;
+  --edge: 208 214 222;
+  --ink: 23 26 31;
+  --inkdim: 91 100 114;
+  --tally: 224 49 41;
+  --amber: 161 98 7;
+  --stage: 255 255 255;
+  --stageink: 17 17 17;
+}
+
+.dark {
+  --panel: 17 19 23;
+  --panel2: 25 28 34;
+  --edge: 44 49 58;
+  --ink: 232 234 238;
+  --inkdim: 134 142 156;
+  --tally: 255 69 58;
+  --amber: 255 176 32;
+  --stage: 0 0 0;
+  --stageink: 255 255 255;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: rgb(var(--panel));
+  color: rgb(var(--ink));
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Stage prompter ── */
+.stage-scroll {
+  scrollbar-width: none;
+}
+.stage-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.prompter-par {
+  opacity: 0.42;
+  transition: opacity 180ms linear;
+}
+.prompter-par[data-active="true"] {
+  opacity: 1;
+}
+
+/* ── Slider ── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgb(var(--edge));
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: rgb(var(--ink));
+  border: 3px solid rgb(var(--panel2));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: rgb(var(--ink));
+  border: 3px solid rgb(var(--panel2));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+  cursor: pointer;
+}
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid rgb(var(--amber));
+  outline-offset: 2px;
+}
+
+/* ── Lampu tally ── */
+@keyframes tally-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(var(--tally) / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(var(--tally) / 0);
+  }
+}
+.tally-live {
+  animation: tally-pulse 1.6s ease-out infinite;
+}
+
+/* ── Animasi tombol Simpan koneksi ── */
+@keyframes save-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(16 185 129 / 0.6);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px rgb(16 185 129 / 0);
+  }
+}
+.save-ok {
+  animation: save-pop 0.6s ease-out;
+}
+
+@keyframes save-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+.save-fail {
+  animation: save-shake 0.4s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tally-live,
+  .save-ok,
+  .save-fail {
+    animation: none;
+  }
+  .prompter-par {
+    transition: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--amber));
+  outline-offset: 2px;
+}
