@@ -45,6 +45,26 @@ const TLD_PATTERN =
 const DOMAIN_RE = new RegExp(`[\\w-]+\\.${TLD_PATTERN}(?![\\w-])`, "i");
 const URLISH_RE = /^(https?:\/\/|www\.)/i;
 const PLACE_TOKEN = "\u0003";
+const PLACE_NOTE = "\u0004";
+
+/** Regex catatan sutradara: [teks apa pun dalam satu baris]. */
+export const NOTE_RE = /\[[^\][\n]*\]/g;
+
+/** Ambil catatan [teks] keluar dari teks, ganti dengan placeholder. */
+function extractNotes(t: string): { text: string; notes: string[] } {
+  const notes: string[] = [];
+  const text = t.replace(NOTE_RE, (m) => {
+    const idx = notes.push(m) - 1;
+    return `${PLACE_NOTE}${idx}${PLACE_NOTE}`;
+  });
+  return { text, notes };
+}
+
+function restoreNotes(t: string, notes: string[]): string {
+  return t.replace(new RegExp(`${PLACE_NOTE}(\\d+)${PLACE_NOTE}`, "g"), (_, i) =>
+    notes[Number(i)] ?? ""
+  );
+}
 
 /** Ambil token URL/domain/email keluar dari teks, ganti dengan placeholder. */
 function extractProtectedTokens(t: string): { text: string; tokens: string[] } {
@@ -76,7 +96,12 @@ function restoreProtectedTokens(t: string, tokens: string[]): string {
 export function formatPrompterText(raw: string): string {
   let t = raw;
 
-  // 0) Lindungi token URL, domain, dan email secara utuh
+  // 0a) Lindungi catatan sutradara [Teks] — tampil verbatim, tidak
+  //     di-kapital dan tanda bacanya tidak dikonversi.
+  const notes = extractNotes(t);
+  t = notes.text;
+
+  // 0b) Lindungi token URL, domain, dan email secara utuh
   //    (accurate.id, https://accurate.id/promo, halo@accurate.id)
   const protectedTokens = extractProtectedTokens(t);
   t = protectedTokens.text;
@@ -115,7 +140,23 @@ export function formatPrompterText(raw: string): string {
   // 8) Kembalikan token URL/domain/email apa adanya (versi kapital)
   t = restoreProtectedTokens(t, protectedTokens.tokens);
 
+  // 9) Kembalikan catatan sutradara persis seperti aslinya
+  t = restoreNotes(t, notes.notes);
+
   return t;
+}
+
+export interface Segment {
+  note: boolean; // true = catatan sutradara [Teks]
+  text: string;
+}
+
+/** Pecah paragraf terformat menjadi segmen teks biasa vs catatan [Teks]. */
+export function splitSegments(p: string): Segment[] {
+  return p
+    .split(/(\[[^\][\n]*\])/g)
+    .filter((s) => s.length > 0)
+    .map((s) => ({ note: /^\[[^\][\n]*\]$/.test(s), text: s }));
 }
 
 /** Pecah teks mentah menjadi paragraf prompter (baris kosong = pemisah). */
@@ -128,9 +169,11 @@ export function toParagraphs(raw: string): string[] {
     .filter((p) => p.length > 0);
 }
 
-/** Hitung jumlah kata dari teks mentah (untuk estimasi durasi baca). */
+/** Hitung jumlah kata dari teks mentah (untuk estimasi durasi baca).
+ *  Catatan sutradara [Teks] tidak dihitung karena tidak dibaca talent. */
 export function countWords(raw: string): number {
-  const words = raw.trim().split(/\s+/).filter(Boolean);
+  const spoken = raw.replace(NOTE_RE, " ");
+  const words = spoken.trim().split(/\s+/).filter(Boolean);
   return words.length;
 }
 

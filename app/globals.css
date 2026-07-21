@@ -65,6 +65,15 @@ body {
   opacity: 1;
 }
 
+/* Catatan sutradara [Teks]: warna & ukuran di-set inline dari settings */
+.prompter-note {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  padding: 0 0.35em;
+  white-space: nowrap;
+}
+
 /* ── Slider ── */
 input[type="range"] {
   -webkit-appearance: none;

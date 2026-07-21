@@ -12,6 +12,7 @@ import {
   countWords,
   estimateSeconds,
   formatDuration,
+  splitSegments,
   toParagraphs,
 } from "@/lib/formatter";
 import {
@@ -779,7 +780,7 @@ export default function PrompterApp() {
           <span className="text-sm font-bold tracking-[0.25em]">
             PROMPTER CIHUY
           </span>
-          <span className="font-num text-[10px] text-inkdim">v0.5.0-alpha</span>
+          <span className="font-num text-[10px] text-inkdim">v0.7.0-alpha</span>
         </div>
 
         <div className="ml-auto flex items-center gap-3">
@@ -1169,6 +1170,55 @@ export default function PrompterApp() {
                 onChange={(e) => patch({ readLinePos: Number(e.target.value) })}
               />
 
+              <div className="mb-1 mt-3 flex items-center justify-between">
+                <label htmlFor="notesize" className="text-xs text-inkdim">
+                  Ukuran catatan [cue]
+                </label>
+                <span className="font-num text-xs">{settings.noteSize} px</span>
+              </div>
+              <input
+                id="notesize"
+                type="range"
+                min={12}
+                max={48}
+                step={1}
+                value={settings.noteSize}
+                onChange={(e) => patch({ noteSize: Number(e.target.value) })}
+              />
+
+              <div className="mb-1 mt-3 flex items-center justify-between">
+                <span className="text-xs text-inkdim">Warna catatan</span>
+                <span
+                  className="font-num text-xs"
+                  style={{ color: settings.noteColor }}
+                >
+                  [cue]
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {[
+                  "#ff453a",
+                  "#ff9f0a",
+                  "#ffd60a",
+                  "#30d158",
+                  "#0a84ff",
+                  "#bf5af2",
+                  "#ffffff",
+                ].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => patch({ noteColor: c })}
+                    aria-label={`Warna catatan ${c}`}
+                    className={`h-7 w-7 rounded-full border ${
+                      settings.noteColor === c
+                        ? "border-2 border-ink ring-2 ring-amber"
+                        : "border-edge"
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+
               <div className="mt-3 flex gap-4">
                 <label className="flex items-center gap-2 text-xs">
                   <input
@@ -1310,7 +1360,22 @@ export default function PrompterApp() {
                     color: "rgb(var(--stageink))",
                   }}
                 >
-                  {p}
+                  {splitSegments(p).map((seg, j) =>
+                    seg.note ? (
+                      <span
+                        key={j}
+                        className="prompter-note"
+                        style={{
+                          fontSize: settings.noteSize,
+                          color: settings.noteColor,
+                        }}
+                      >
+                        {seg.text}
+                      </span>
+                    ) : (
+                      <span key={j}>{seg.text}</span>
+                    )
+                  )}
                 </p>
               ))}
             </div>

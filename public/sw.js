@@ -1,5 +1,5 @@
 // Service worker sederhana: network-first, fallback ke cache saat offline.
-const CACHE = "prompter-v1";
+const CACHE = "prompter-v0.7.0"; // samakan dengan versi aplikasi tiap rilis agar cache lama terbuang
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

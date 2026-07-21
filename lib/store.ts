@@ -13,6 +13,8 @@ export interface PrompterSettings {
   lineHeight: number; // 1.2–2.0
   docUrl: string; // link Google Docs
   sourceControl: SourceControl; // sumber naskah dikelola dari mana
+  noteSize: number; // ukuran font catatan [Teks], px, tidak ikut slider utama
+  noteColor: string; // warna font catatan [Teks]
 }
 
 export const DEFAULT_SETTINGS: PrompterSettings = {
@@ -25,6 +27,8 @@ export const DEFAULT_SETTINGS: PrompterSettings = {
   lineHeight: 1.5,
   docUrl: "",
   sourceControl: "tablet",
+  noteSize: 20,
+  noteColor: "#ff453a",
 };
 
 export interface Preset {

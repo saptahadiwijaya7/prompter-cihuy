@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APP_CONFIG, hasBuiltInConfig, passwordOf } from "@/lib/config";
-import { formatDuration, toParagraphs } from "@/lib/formatter";
+import { formatDuration, splitSegments, toParagraphs } from "@/lib/formatter";
 import {
   pullText,
   pushManualText,
@@ -605,6 +605,49 @@ export default function RemoteControl() {
                 step={1}
                 onChange={(v) => patchRemote({ readLinePos: v })}
               />
+              <SliderRow
+                label="Ukuran catatan [cue]"
+                value={settings.noteSize}
+                unit="px"
+                min={12}
+                max={48}
+                step={1}
+                onChange={(v) => patchRemote({ noteSize: v })}
+              />
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs text-inkdim">Warna catatan</span>
+                  <span
+                    className="font-num text-xs"
+                    style={{ color: settings.noteColor }}
+                  >
+                    [cue]
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  {[
+                    "#ff453a",
+                    "#ff9f0a",
+                    "#ffd60a",
+                    "#30d158",
+                    "#0a84ff",
+                    "#bf5af2",
+                    "#ffffff",
+                  ].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => patchRemote({ noteColor: c })}
+                      aria-label={`Warna catatan ${c}`}
+                      className={`h-9 w-9 rounded-full border ${
+                        settings.noteColor === c
+                          ? "border-2 border-ink ring-2 ring-amber"
+                          : "border-edge"
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
             </section>
 
             <section className="grid grid-cols-3 gap-2">
@@ -635,6 +678,7 @@ export default function RemoteControl() {
                 paragraphs={paragraphs}
                 activeIdx={activeIdx}
                 follow={follow}
+                noteColor={settings.noteColor}
                 onToggleFollow={() => setFollow((v) => !v)}
                 onJump={handleJumpTo}
                 boxRef={textBoxRef}
@@ -659,6 +703,7 @@ export default function RemoteControl() {
                   paragraphs={paragraphs}
                   activeIdx={activeIdx}
                   follow={follow}
+                  noteColor={settings.noteColor}
                   onToggleFollow={() => setFollow((v) => !v)}
                   onJump={handleJumpTo}
                   boxRef={textBoxRef}
@@ -756,6 +801,7 @@ function NaskahPanel({
   paragraphs,
   activeIdx,
   follow,
+  noteColor,
   onToggleFollow,
   onJump,
   boxRef,
@@ -764,6 +810,7 @@ function NaskahPanel({
   paragraphs: string[];
   activeIdx: number;
   follow: boolean;
+  noteColor: string;
   onToggleFollow: () => void;
   onJump: (idx: number) => void;
   boxRef: React.RefObject<HTMLDivElement | null>;
@@ -808,7 +855,19 @@ function NaskahPanel({
                   : "border-l-4 border-transparent text-inkdim hover:text-ink"
               }`}
             >
-              {p}
+              {splitSegments(p).map((seg, j) =>
+                seg.note ? (
+                  <span
+                    key={j}
+                    className="font-semibold"
+                    style={{ color: noteColor }}
+                  >
+                    {seg.text}
+                  </span>
+                ) : (
+                  <span key={j}>{seg.text}</span>
+                )
+              )}
             </button>
           ))
         )}
