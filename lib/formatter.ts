@@ -122,17 +122,22 @@ export function formatPrompterText(raw: string): string {
   // 3) Elipsis "..." -> satu jeda panjang
   t = t.replace(/\.{2,}/g, "//");
 
-  // 4) Konversi tanda baca
-  t = t.replace(/[.?!]/g, "//");
+  // 4) Konversi tanda baca.
+  //    Titik -> "//". Koma, titik dua, titik koma -> "/".
+  //    Tanda tanya "?" dan seru "!" DIBIARKAN apa adanya (bukan jeda).
+  t = t.replace(/\./g, "//");
   t = t.replace(/[,;:]/g, "/");
 
   // 5) Kembalikan angka
   t = t.replace(new RegExp(PLACE_DOT, "g"), ".");
   t = t.replace(new RegExp(PLACE_COMMA, "g"), ",");
 
-  // 6) Rapikan spasi: "kata /" -> "kata/", "//kata" -> "// kata"
-  t = t.replace(/\s+([/]+)/g, "$1");
-  t = t.replace(/(\/+)(?=[^/\s])/g, "$1 ");
+  // 6) Normalisasi spasi: tepat satu spasi sebelum & sesudah setiap
+  //    "/" atau "//" — berlaku untuk hasil konversi maupun slash yang
+  //    memang sudah ada di naskah sumber.
+  t = t.replace(/\s*(\/+)\s*/g, " $1 ");
+  t = t.replace(/\s{2,}/g, " ");
+  t = t.trim();
 
   // 7) Kapital semua
   t = t.toUpperCase();
@@ -146,17 +151,28 @@ export function formatPrompterText(raw: string): string {
   return t;
 }
 
+export type SegKind = "text" | "note" | "slash";
+
 export interface Segment {
-  note: boolean; // true = catatan sutradara [Teks]
+  kind: SegKind;
   text: string;
 }
 
-/** Pecah paragraf terformat menjadi segmen teks biasa vs catatan [Teks]. */
+/** Pecah paragraf terformat menjadi segmen: teks biasa, catatan [Teks],
+ *  dan penanda jeda "/" atau "//" (agar bisa diwarnai terpisah). */
 export function splitSegments(p: string): Segment[] {
-  return p
-    .split(/(\[[^\][\n]*\])/g)
-    .filter((s) => s.length > 0)
-    .map((s) => ({ note: /^\[[^\][\n]*\]$/.test(s), text: s }));
+  const out: Segment[] = [];
+  const parts = p.split(/(\[[^\][\n]*\])/g).filter((s) => s.length > 0);
+  for (const part of parts) {
+    if (/^\[[^\][\n]*\]$/.test(part)) {
+      out.push({ kind: "note", text: part });
+      continue;
+    }
+    for (const s of part.split(/(\/+)/g).filter((x) => x.length > 0)) {
+      out.push({ kind: /^\/+$/.test(s) ? "slash" : "text", text: s });
+    }
+  }
+  return out;
 }
 
 /** Pecah teks mentah menjadi paragraf prompter (baris kosong = pemisah). */

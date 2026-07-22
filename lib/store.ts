@@ -15,6 +15,7 @@ export interface PrompterSettings {
   sourceControl: SourceControl; // sumber naskah dikelola dari mana
   noteSize: number; // ukuran font catatan [Teks], px, tidak ikut slider utama
   noteColor: string; // warna font catatan [Teks]
+  slashColor: string; // warna penanda jeda "/" dan "//" ("auto" = ikut teks)
 }
 
 export const DEFAULT_SETTINGS: PrompterSettings = {
@@ -29,6 +30,7 @@ export const DEFAULT_SETTINGS: PrompterSettings = {
   sourceControl: "tablet",
   noteSize: 20,
   noteColor: "#ff453a",
+  slashColor: "auto",
 };
 
 export interface Preset {

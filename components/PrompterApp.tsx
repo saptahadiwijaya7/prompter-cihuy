@@ -780,7 +780,7 @@ export default function PrompterApp() {
           <span className="text-sm font-bold tracking-[0.25em]">
             PROMPTER CIHUY
           </span>
-          <span className="font-num text-[10px] text-inkdim">v0.7.0-alpha</span>
+          <span className="font-num text-[10px] text-inkdim">v0.8.0-alpha</span>
         </div>
 
         <div className="ml-auto flex items-center gap-3">
@@ -1219,6 +1219,53 @@ export default function PrompterApp() {
                 ))}
               </div>
 
+              <div className="mb-1 mt-3 flex items-center justify-between">
+                <span className="text-xs text-inkdim">Warna jeda</span>
+                <span
+                  className="font-num text-xs"
+                  style={
+                    settings.slashColor === "auto"
+                      ? { color: "rgb(var(--stageink))" }
+                      : { color: settings.slashColor }
+                  }
+                >
+                  / //
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => patch({ slashColor: "auto" })}
+                  className={`h-7 rounded-full border px-2 text-[10px] font-semibold ${
+                    settings.slashColor === "auto"
+                      ? "border-2 border-ink ring-2 ring-amber text-ink"
+                      : "border-edge text-inkdim"
+                  }`}
+                >
+                  Auto
+                </button>
+                {[
+                  "#ff453a",
+                  "#ff9f0a",
+                  "#ffd60a",
+                  "#30d158",
+                  "#0a84ff",
+                  "#bf5af2",
+                  "#8a8f98",
+                ].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => patch({ slashColor: c })}
+                    aria-label={`Warna jeda ${c}`}
+                    className={`h-7 w-7 rounded-full border ${
+                      settings.slashColor === c
+                        ? "border-2 border-ink ring-2 ring-amber"
+                        : "border-edge"
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+
               <div className="mt-3 flex gap-4">
                 <label className="flex items-center gap-2 text-xs">
                   <input
@@ -1361,7 +1408,7 @@ export default function PrompterApp() {
                   }}
                 >
                   {splitSegments(p).map((seg, j) =>
-                    seg.note ? (
+                    seg.kind === "note" ? (
                       <span
                         key={j}
                         className="prompter-note"
@@ -1369,6 +1416,17 @@ export default function PrompterApp() {
                           fontSize: settings.noteSize,
                           color: settings.noteColor,
                         }}
+                      >
+                        {seg.text}
+                      </span>
+                    ) : seg.kind === "slash" ? (
+                      <span
+                        key={j}
+                        style={
+                          settings.slashColor === "auto"
+                            ? undefined
+                            : { color: settings.slashColor }
+                        }
                       >
                         {seg.text}
                       </span>

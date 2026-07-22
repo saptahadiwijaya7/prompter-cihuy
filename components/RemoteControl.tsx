@@ -648,6 +648,55 @@ export default function RemoteControl() {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs text-inkdim">Warna jeda</span>
+                  <span
+                    className="font-num text-xs"
+                    style={
+                      settings.slashColor === "auto"
+                        ? { color: "rgb(var(--ink))" }
+                        : { color: settings.slashColor }
+                    }
+                  >
+                    / //
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => patchRemote({ slashColor: "auto" })}
+                    className={`h-9 rounded-full border px-2.5 text-[11px] font-semibold ${
+                      settings.slashColor === "auto"
+                        ? "border-2 border-ink ring-2 ring-amber text-ink"
+                        : "border-edge text-inkdim"
+                    }`}
+                  >
+                    Auto
+                  </button>
+                  {[
+                    "#ff453a",
+                    "#ff9f0a",
+                    "#ffd60a",
+                    "#30d158",
+                    "#0a84ff",
+                    "#bf5af2",
+                    "#8a8f98",
+                  ].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => patchRemote({ slashColor: c })}
+                      aria-label={`Warna jeda ${c}`}
+                      className={`h-9 w-9 rounded-full border ${
+                        settings.slashColor === c
+                          ? "border-2 border-ink ring-2 ring-amber"
+                          : "border-edge"
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
             </section>
 
             <section className="grid grid-cols-3 gap-2">
@@ -679,6 +728,7 @@ export default function RemoteControl() {
                 activeIdx={activeIdx}
                 follow={follow}
                 noteColor={settings.noteColor}
+                slashColor={settings.slashColor}
                 onToggleFollow={() => setFollow((v) => !v)}
                 onJump={handleJumpTo}
                 boxRef={textBoxRef}
@@ -704,6 +754,7 @@ export default function RemoteControl() {
                   activeIdx={activeIdx}
                   follow={follow}
                   noteColor={settings.noteColor}
+                  slashColor={settings.slashColor}
                   onToggleFollow={() => setFollow((v) => !v)}
                   onJump={handleJumpTo}
                   boxRef={textBoxRef}
@@ -802,6 +853,7 @@ function NaskahPanel({
   activeIdx,
   follow,
   noteColor,
+  slashColor,
   onToggleFollow,
   onJump,
   boxRef,
@@ -811,6 +863,7 @@ function NaskahPanel({
   activeIdx: number;
   follow: boolean;
   noteColor: string;
+  slashColor: string;
   onToggleFollow: () => void;
   onJump: (idx: number) => void;
   boxRef: React.RefObject<HTMLDivElement | null>;
@@ -856,11 +909,20 @@ function NaskahPanel({
               }`}
             >
               {splitSegments(p).map((seg, j) =>
-                seg.note ? (
+                seg.kind === "note" ? (
                   <span
                     key={j}
                     className="font-semibold"
                     style={{ color: noteColor }}
+                  >
+                    {seg.text}
+                  </span>
+                ) : seg.kind === "slash" ? (
+                  <span
+                    key={j}
+                    style={
+                      slashColor === "auto" ? undefined : { color: slashColor }
+                    }
                   >
                     {seg.text}
                   </span>
