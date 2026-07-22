@@ -6,7 +6,7 @@
 
 export const APP_CONFIG = {
   gasUrl:
-    process.env.NEXT_PUBLIC_GAS_URL ?? "PASTE_URL_WEB_APP_DISINI",
+    process.env.NEXT_PUBLIC_GAS_URL ?? "https://script.google.com/macros/s/AKfycbw8RWTNoXWKacKlgqxLOXncoRdpn2OkoWrR4Aq4sP9AfIVeciSi9v7SyyIZSlnRpWFz/exec",
   gasToken:
     process.env.NEXT_PUBLIC_GAS_TOKEN ??
     "e8ad7c883e9d4b738e1e7013b5fa7060",
