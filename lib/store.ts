@@ -16,6 +16,7 @@ export interface PrompterSettings {
   noteSize: number; // ukuran font catatan [Teks], px, tidak ikut slider utama
   noteColor: string; // warna font catatan [Teks]
   slashColor: string; // warna penanda jeda "/" dan "//" ("auto" = ikut teks)
+  useCountdown: boolean; // tampilkan hitung mundur 3-2-1 sebelum mulai
 }
 
 export const DEFAULT_SETTINGS: PrompterSettings = {
@@ -31,6 +32,7 @@ export const DEFAULT_SETTINGS: PrompterSettings = {
   noteSize: 20,
   noteColor: "#ff453a",
   slashColor: "auto",
+  useCountdown: true,
 };
 
 export interface Preset {

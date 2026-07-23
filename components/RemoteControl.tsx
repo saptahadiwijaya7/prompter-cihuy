@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { APP_CONFIG, hasBuiltInConfig, passwordOf } from "@/lib/config";
+import { APP_CONFIG, hasBuiltInConfig, hasRealtime, passwordOf } from "@/lib/config";
 import { formatDuration, splitSegments, toParagraphs } from "@/lib/formatter";
+import { joinChannel, RealtimeHandle } from "@/lib/realtime";
 import {
   pullText,
   pushManualText,
@@ -62,6 +63,9 @@ export default function RemoteControl() {
   const seededRef = useRef(false); // slider sudah di-seed dari status tablet
   const pendingRef = useRef<Partial<PrompterSettings>>({});
   const debounceRef = useRef<number>(0);
+  const rtRef = useRef<RealtimeHandle | null>(null);
+  const rtReadyRef = useRef(false);
+  const [rtReady, setRtReady] = useState(false);
   const playNonceRef = useRef(0);
   const resetNonceRef = useRef(0);
   const busyRef = useRef(false);
@@ -84,8 +88,15 @@ export default function RemoteControl() {
   // ── Kirim perintah ──
   const sendCmd = useCallback(
     (cmd: Omit<RemoteCommand, "seq">) => {
-      if (!gasUrl || !room) return;
+      if (!room) return;
       const full: RemoteCommand = { seq: Date.now(), ...cmd };
+      // Jalur cepat: kirim via realtime kalau sudah tersambung.
+      if (rtRef.current && rtReadyRef.current) {
+        rtRef.current.sendCmd(full);
+        return;
+      }
+      // Fallback: relay Apps Script.
+      if (!gasUrl) return;
       void remoteSync(gasUrl, gasToken, room, full)
         .then((res) => {
           if (!res.ok) setRelayError(res.error ?? "Relay gagal");
@@ -102,7 +113,18 @@ export default function RemoteControl() {
     [gasUrl, gasToken, room]
   );
 
-  // Perubahan slider dikirim dengan debounce agar tidak membanjiri relay.
+  // Terapkan status yang diterima dari tablet (dipakai realtime & polling).
+  const applyStatus = useCallback((st: TabletStatus) => {
+    setStatus(st);
+    setLinked(true);
+    setRelayError("");
+    if (!seededRef.current) {
+      seededRef.current = true;
+      setSettings((prev) => ({ ...prev, ...st.settings }));
+    }
+  }, []);
+
+  // Perubahan slider dikirim dengan debounce agar tidak membanjiri kanal.
   const patchRemote = useCallback(
     (p: Partial<PrompterSettings>) => {
       setSettings((prev) => ({ ...prev, ...p }));
@@ -112,13 +134,33 @@ export default function RemoteControl() {
         const payload = pendingRef.current;
         pendingRef.current = {};
         sendCmd({ settings: payload });
-      }, 300);
+      }, 150);
     },
     [sendCmd]
   );
 
-  // ── Polling status tablet ──
+  // ── Jalur cepat: Supabase Realtime ──
   useEffect(() => {
+    if (step !== "control" || !room || !hasRealtime()) return;
+    const handle = joinChannel(room, {
+      onStatus: (st) => applyStatus(st),
+      onReady: (ready) => {
+        rtReadyRef.current = ready;
+        setRtReady(ready);
+      },
+    });
+    rtRef.current = handle;
+    return () => {
+      handle?.close();
+      rtRef.current = null;
+      rtReadyRef.current = false;
+      setRtReady(false);
+    };
+  }, [step, room, applyStatus]);
+
+  // ── Fallback: polling status via Apps Script (bila realtime tak aktif) ──
+  useEffect(() => {
+    if (rtReady) return;
     if (step !== "control" || !gasUrl || !room) return;
     let stopped = false;
     const controller = new AbortController();
@@ -130,16 +172,8 @@ export default function RemoteControl() {
         const res = await remoteSync(gasUrl, gasToken, room, undefined, controller.signal);
         if (stopped) return;
         if (res.ok) {
-          setRelayError("");
-          if (res.status) {
-            setStatus(res.status);
-            setLinked(true);
-            // seed slider sekali dari kondisi tablet saat ini
-            if (!seededRef.current) {
-              seededRef.current = true;
-              setSettings((prev) => ({ ...prev, ...res.status!.settings }));
-            }
-          }
+          if (res.status) applyStatus(res.status);
+          else setRelayError("");
         } else {
           setRelayError(res.error ?? "Relay gagal");
         }
@@ -157,7 +191,7 @@ export default function RemoteControl() {
       controller.abort();
       clearInterval(iv);
     };
-  }, [step, gasUrl, gasToken, room]);
+  }, [rtReady, step, gasUrl, gasToken, room, applyStatus]);
 
   // ── Tarik naskah dari relay saat versinya berubah ──
   useEffect(() => {
@@ -325,6 +359,14 @@ export default function RemoteControl() {
                 {relayError ? "PUTUS" : linked ? room : "MENCARI…"}
               </span>
             </span>
+            {rtReady && (
+              <span
+                className="rounded-full border border-emerald-500 px-2 py-0.5 text-[9px] font-bold tracking-wider text-emerald-500"
+                title="Perintah lewat jalur realtime (latensi rendah)"
+              >
+                ⚡ CEPAT
+              </span>
+            )}
           </div>
         )}
       </header>
@@ -565,6 +607,16 @@ export default function RemoteControl() {
                 ↺ Reset
               </button>
             </section>
+
+            <label className="flex items-center justify-center gap-2 rounded-xl border border-edge bg-panel2 py-3 text-xs">
+              <input
+                type="checkbox"
+                checked={settings.useCountdown}
+                onChange={(e) => patchRemote({ useCountdown: e.target.checked })}
+                className="h-4 w-4 accent-current"
+              />
+              Hitung mundur 3-2-1 sebelum mulai
+            </label>
 
             {/* Gerakan & tampilan */}
             <section className="space-y-4 rounded-xl border border-edge bg-panel2 p-3">

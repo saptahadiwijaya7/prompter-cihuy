@@ -23,3 +23,19 @@ export function hasBuiltInConfig(): boolean {
 export function passwordOf(token: string): string {
   return token.slice(-6);
 }
+
+// ── Supabase Realtime (opsional) untuk remote latensi rendah ──
+// anon key aman ditaruh di client (public by design). Isi via env var
+// Vercel: NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY.
+export const SUPABASE_CONFIG = {
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://fuqbylijcummxjfuqpou.supabase.co",
+  anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cWJ5bGlqY3VtbXhqZnVxcG91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3OTQzOTEsImV4cCI6MjEwMDM3MDM5MX0.sFn7paCzshdITcjxplc2nd9-0izr2uQefj2wQCiIdrw",
+};
+
+/** True jika Supabase Realtime dikonfigurasi (jalur cepat aktif). */
+export function hasRealtime(): boolean {
+  return (
+    SUPABASE_CONFIG.url.startsWith("https://") &&
+    SUPABASE_CONFIG.anonKey.length > 20
+  );
+}

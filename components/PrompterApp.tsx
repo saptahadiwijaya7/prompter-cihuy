@@ -32,7 +32,8 @@ import {
   saveSettings,
   saveUnlocked,
 } from "@/lib/store";
-import { APP_CONFIG, hasBuiltInConfig, passwordOf } from "@/lib/config";
+import { APP_CONFIG, hasBuiltInConfig, hasRealtime, passwordOf } from "@/lib/config";
+import { joinChannel, RealtimeHandle } from "@/lib/realtime";
 import {
   generateRoomCode,
   hashText,
@@ -111,6 +112,8 @@ export default function PrompterApp() {
   const syncStatusRef = useRef<SyncStatus>("idle");
   const pushedVersionRef = useRef("");
   const remoteBusyRef = useRef(false);
+  const rtRef = useRef<RealtimeHandle | null>(null);
+  const [rtReady, setRtReady] = useState(false);
 
   // ── Refs untuk engine scroll ──
   const stageRef = useRef<HTMLDivElement>(null);
@@ -319,6 +322,12 @@ export default function PrompterApp() {
     }, 800);
   }, [countdown, startPlaying]);
 
+  // Mulai memutar, dengan hitung mundur bila diaktifkan di setting.
+  const beginPlay = useCallback(() => {
+    if (settingsRef.current.useCountdown) startWithCountdown();
+    else startPlaying();
+  }, [startWithCountdown, startPlaying]);
+
   const togglePlay = useCallback(() => {
     if (countdown !== null) return;
     if (playingRef.current) pausePlaying();
@@ -499,7 +508,7 @@ export default function PrompterApp() {
         cmd.playNonce !== lastPlayNonceRef.current
       ) {
         lastPlayNonceRef.current = cmd.playNonce;
-        if (cmd.play === "start" && !playingRef.current) startWithCountdown();
+        if (cmd.play === "start" && !playingRef.current) beginPlay();
         if (cmd.play === "pause") pausePlaying();
       }
       if (
@@ -560,7 +569,8 @@ export default function PrompterApp() {
     },
     [
       patch,
-      startWithCountdown,
+      startPlaying,
+      beginPlay,
       pausePlaying,
       resetScroll,
       jumpToParagraph,
@@ -599,7 +609,49 @@ export default function PrompterApp() {
     pushedVersionRef.current = "";
   }, [roomCode, remoteOn]);
 
+  const buildStatus = useCallback(
+    (): TabletStatus => ({
+      ts: Date.now(),
+      playing: playingRef.current,
+      progress: progressRef.current,
+      kata: kataRef.current,
+      durasi: durasiRef.current,
+      settings: settingsRef.current,
+      activeIdx: activeIdxRef.current,
+      textVersion: textVersionRef.current,
+      docConnected: connectedRef.current,
+      syncNote: syncStatusRef.current,
+    }),
+    []
+  );
+
+  // ── Jalur cepat: Supabase Realtime (jika dikonfigurasi) ──
   useEffect(() => {
+    if (!remoteOn || !roomCode || !hasRealtime()) return;
+    const handle = joinChannel(roomCode, {
+      onCmd: (cmd) => applyRemoteCmd(cmd),
+      onReady: (ready) => setRtReady(ready),
+    });
+    rtRef.current = handle;
+    return () => {
+      handle?.close();
+      rtRef.current = null;
+      setRtReady(false);
+    };
+  }, [remoteOn, roomCode, applyRemoteCmd]);
+
+  // Kirim status via realtime (heartbeat ringan)
+  useEffect(() => {
+    if (!rtReady) return;
+    const send = () => rtRef.current?.sendStatus(buildStatus());
+    send();
+    const iv = setInterval(send, 600);
+    return () => clearInterval(iv);
+  }, [rtReady, buildStatus]);
+
+  // ── Fallback: polling Apps Script (dipakai bila realtime tidak aktif) ──
+  useEffect(() => {
+    if (rtReady) return; // realtime sudah menangani perintah & status
     if (!remoteOn || !effGasUrl || !roomCode) return;
     let stopped = false;
     const controller = new AbortController();
@@ -608,23 +660,11 @@ export default function PrompterApp() {
       if (remoteBusyRef.current || stopped) return;
       remoteBusyRef.current = true;
       try {
-        const status: TabletStatus = {
-          ts: Date.now(),
-          playing: playingRef.current,
-          progress: progressRef.current,
-          kata: kataRef.current,
-          durasi: durasiRef.current,
-          settings: settingsRef.current,
-          activeIdx: activeIdxRef.current,
-          textVersion: textVersionRef.current,
-          docConnected: connectedRef.current,
-          syncNote: syncStatusRef.current,
-        };
         const res = await tabletSync(
           effGasUrl,
           effGasToken,
           roomCode,
-          status,
+          buildStatus(),
           controller.signal
         );
         if (stopped) return;
@@ -646,7 +686,7 @@ export default function PrompterApp() {
       controller.abort();
       clearInterval(iv);
     };
-  }, [remoteOn, effGasUrl, effGasToken, roomCode, applyRemoteCmd]);
+  }, [rtReady, remoteOn, effGasUrl, effGasToken, roomCode, applyRemoteCmd, buildStatus]);
 
   const handleDisconnect = useCallback(() => {
     setConnected(false);
@@ -780,7 +820,7 @@ export default function PrompterApp() {
           <span className="text-sm font-bold tracking-[0.25em]">
             PROMPTER CIHUY
           </span>
-          <span className="font-num text-[10px] text-inkdim">v0.8.0-alpha</span>
+          <span className="font-num text-[10px] text-inkdim">v0.9.1-alpha</span>
         </div>
 
         <div className="ml-auto flex items-center gap-3">
@@ -1087,7 +1127,7 @@ export default function PrompterApp() {
               />
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <button
-                  onClick={playing ? pausePlaying : startWithCountdown}
+                  onClick={playing ? pausePlaying : beginPlay}
                   className={`rounded-lg py-2.5 text-xs font-bold tracking-widest ${
                     playing
                       ? "border border-amber text-amber"
@@ -1110,6 +1150,15 @@ export default function PrompterApp() {
                   ↺ Reset
                 </button>
               </div>
+              <label className="mt-2 flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={settings.useCountdown}
+                  onChange={(e) => patch({ useCountdown: e.target.checked })}
+                  className="h-4 w-4 accent-current"
+                />
+                Hitung mundur 3-2-1 sebelum mulai
+              </label>
               <p className="mt-2 text-[11px] leading-relaxed text-inkdim">
                 Ketuk area naskah untuk jeda/lanjut. Spasi = jeda/lanjut, ↑↓ =
                 kecepatan, R = reset, F = fullscreen, M = mirror.
@@ -1365,6 +1414,20 @@ export default function PrompterApp() {
                     Buka <span className="font-num">/remote</span> di HP
                     (URL aplikasi ini + /remote), masukkan password dan kode
                     di atas.
+                  </p>
+                  <p className="mt-2 flex items-center justify-center gap-1.5 text-[10px]">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        rtReady ? "bg-emerald-500" : "bg-amber"
+                      }`}
+                    />
+                    <span className="text-inkdim">
+                      {rtReady
+                        ? "Jalur cepat aktif (realtime)"
+                        : hasRealtime()
+                          ? "Menyambung jalur cepat…"
+                          : "Mode relay Apps Script (±1–3 dtk)"}
+                    </span>
                   </p>
                   <button
                     onClick={() => setRoomCode(generateRoomCode())}
