@@ -820,7 +820,7 @@ export default function PrompterApp() {
           <span className="text-sm font-bold tracking-[0.25em]">
             PROMPTER CIHUY
           </span>
-          <span className="font-num text-[10px] text-inkdim">v0.9.1-alpha</span>
+          <span className="font-num text-[10px] text-inkdim">v0.9.2-alpha</span>
         </div>
 
         <div className="ml-auto flex items-center gap-3">

@@ -43,6 +43,8 @@ export default function RemoteControl() {
   const [remoteRaw, setRemoteRaw] = useState("");
   const [follow, setFollow] = useState(true); // auto-ikuti baris aktif
   const lastVerRef = useRef("");
+  const pullingRef = useRef(false);
+  const lastLocalEditRef = useRef(0);
   const jumpNonceRef = useRef(0);
   const textBoxRef = useRef<HTMLDivElement>(null);
 
@@ -118,15 +120,22 @@ export default function RemoteControl() {
     setStatus(st);
     setLinked(true);
     setRelayError("");
-    if (!seededRef.current) {
-      seededRef.current = true;
-      setSettings((prev) => ({ ...prev, ...st.settings }));
+    // Ikuti setting dari tablet, TAPI jangan menimpa perubahan yang baru
+    // saja dikirim dari remote (jeda 1,2 detik) agar slider tidak "balik".
+    if (Date.now() - lastLocalEditRef.current > 1200) {
+      setSettings((prev) => {
+        const merged = { ...prev, ...st.settings };
+        // pertahankan field yang sedang menunggu dikirim (pending)
+        return { ...merged, ...pendingRef.current };
+      });
     }
+    seededRef.current = true;
   }, []);
 
   // Perubahan slider dikirim dengan debounce agar tidak membanjiri kanal.
   const patchRemote = useCallback(
     (p: Partial<PrompterSettings>) => {
+      lastLocalEditRef.current = Date.now();
       setSettings((prev) => ({ ...prev, ...p }));
       pendingRef.current = { ...pendingRef.current, ...p };
       window.clearTimeout(debounceRef.current);
@@ -194,24 +203,26 @@ export default function RemoteControl() {
   }, [rtReady, step, gasUrl, gasToken, room, applyStatus]);
 
   // ── Tarik naskah dari relay saat versinya berubah ──
+  // Dep hanya nilai textVersion (string), BUKAN objek status — supaya
+  // status realtime yang datang cepat (600ms) tidak membatalkan pull
+  // Apps Script yang butuh ~1 detik untuk selesai.
   useEffect(() => {
-    if (step !== "control" || !status?.textVersion || !gasUrl || !room) return;
-    if (status.textVersion === lastVerRef.current) return;
-    const version = status.textVersion;
-    let cancelled = false;
-    void pullText(gasUrl, gasToken, room)
+    const version = status?.textVersion;
+    if (step !== "control" || !version || !gasUrl || !room) return;
+    if (version === lastVerRef.current || pullingRef.current) return;
+    pullingRef.current = true;
+    pullText(gasUrl, gasToken, room)
       .then((res) => {
-        if (cancelled) return;
         if (res.ok && typeof res.text === "string" && res.text) {
           lastVerRef.current = version;
           setRemoteRaw(res.text);
         }
       })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [step, status?.textVersion, gasUrl, gasToken, room, status]);
+      .catch(() => {})
+      .finally(() => {
+        pullingRef.current = false;
+      });
+  }, [step, status?.textVersion, gasUrl, gasToken, room]);
 
   // ── Auto-ikuti baris aktif di panel naskah ──
   useEffect(() => {
