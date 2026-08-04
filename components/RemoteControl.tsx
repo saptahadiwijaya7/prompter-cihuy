@@ -827,6 +827,18 @@ export default function RemoteControl() {
           </div>
         )}
       </main>
+
+      {status?.countdown != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <span
+            key={status.countdown}
+            className="countdown-pop font-num font-black text-white"
+            style={{ fontSize: "40vmin" }}
+          >
+            {status.countdown}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

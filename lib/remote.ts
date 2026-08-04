@@ -29,6 +29,7 @@ export interface TabletStatus {
   textVersion: string; // hash naskah — remote menarik ulang saat berubah
   docConnected: boolean; // live sync Google Docs sedang aktif
   syncNote: string; // "ok" | "error" | "offline" | "idle"
+  countdown: number | null; // angka hitung mundur yang sedang tampil (3/2/1) atau null
 }
 
 interface RelayResponse {

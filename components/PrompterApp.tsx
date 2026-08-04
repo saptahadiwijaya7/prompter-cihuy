@@ -114,6 +114,8 @@ export default function PrompterApp() {
   const remoteBusyRef = useRef(false);
   const rtRef = useRef<RealtimeHandle | null>(null);
   const [rtReady, setRtReady] = useState(false);
+  const countdownRef = useRef<number | null>(null);
+  const buildStatusRef = useRef<() => TabletStatus>(() => ({}) as TabletStatus);
 
   // ── Refs untuk engine scroll ──
   const stageRef = useRef<HTMLDivElement>(null);
@@ -163,6 +165,10 @@ export default function PrompterApp() {
     connectedRef.current = connected;
     syncStatusRef.current = syncStatus;
   }, [connected, syncStatus]);
+
+  useEffect(() => {
+    countdownRef.current = countdown;
+  }, [countdown]);
 
   useEffect(() => {
     if (hydrated && roomCode) saveRoom(roomCode);
@@ -310,15 +316,21 @@ export default function PrompterApp() {
     if (playingRef.current || countdown !== null) return;
     let n = 3;
     setCountdown(n);
+    countdownRef.current = n;
+    rtRef.current?.sendStatus(buildStatusRef.current());
     const iv = setInterval(() => {
       n -= 1;
       if (n <= 0) {
         clearInterval(iv);
         setCountdown(null);
+        countdownRef.current = null;
         startPlaying();
       } else {
         setCountdown(n);
+        countdownRef.current = n;
       }
+      // dorong status seketika agar overlay di remote ikut berdetak
+      rtRef.current?.sendStatus(buildStatusRef.current());
     }, 800);
   }, [countdown, startPlaying]);
 
@@ -621,9 +633,14 @@ export default function PrompterApp() {
       textVersion: textVersionRef.current,
       docConnected: connectedRef.current,
       syncNote: syncStatusRef.current,
+      countdown: countdownRef.current,
     }),
     []
   );
+
+  useEffect(() => {
+    buildStatusRef.current = buildStatus;
+  }, [buildStatus]);
 
   // ── Jalur cepat: Supabase Realtime (jika dikonfigurasi) ──
   useEffect(() => {
@@ -820,7 +837,7 @@ export default function PrompterApp() {
           <span className="text-sm font-bold tracking-[0.25em]">
             PROMPTER CIHUY
           </span>
-          <span className="font-num text-[10px] text-inkdim">v0.9.2-alpha</span>
+          <span className="font-num text-[10px] text-inkdim">v0.9.3-alpha</span>
         </div>
 
         <div className="ml-auto flex items-center gap-3">
@@ -1561,7 +1578,10 @@ export default function PrompterApp() {
           {/* Countdown */}
           {countdown !== null && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-              <span className="font-num text-[18vmin] font-black text-white">
+              <span
+                key={countdown}
+                className="countdown-pop font-num text-[18vmin] font-black text-white"
+              >
                 {countdown}
               </span>
             </div>

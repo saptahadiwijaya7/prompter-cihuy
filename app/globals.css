@@ -163,10 +163,30 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   animation: save-shake 0.4s ease-in-out;
 }
 
+/* ── Angka hitung mundur 3-2-1 ── */
+@keyframes countdown-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.85;
+  }
+}
+.countdown-pop {
+  animation: countdown-pop 0.7s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tally-live,
   .save-ok,
-  .save-fail {
+  .save-fail,
+  .countdown-pop {
     animation: none;
   }
   .prompter-par {
